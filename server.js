@@ -7,7 +7,7 @@ var connect = require('connect')
 		, article_cache = {}
 		, request = require('request')
 		, cheerio = require('cheerio')
-		, agent_counter = 0;//for caching already-retrieved articles.
+		, randomAgent = require('./randomAgent.js');//replace this later with your better function
 	
 //Setup Express
 var server = express.createServer();
@@ -43,24 +43,6 @@ server.error(function(err, req, res, next){
 server.listen( port);
 
 
-function randomAgent(){
-	//cycle through user agents
-	
-	var agents = ['Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
-	'( Robots.txt Validator http://www.searchengineworld.com/cgi-bin/robotcheck.cgi )',
-	'Amfibibot/0.07 (Amfibi Robot; http://www.amfibi.com; agent@amfibi.com) ',
-	'Googlebot/2.X (+http://www.googlebot.com/bot.html)',
-	'KIT-Fireball/2.0 libwww/5.0a',
-	'FyberSpider (+http://www.fybersearch.com/fyberspider.php)',
-	'ABCdatos BotLink/1.0.2 (test links)',
-	'Big Brother (http://pauillac.inria.fr/~fpottier/)',
-	'BigCliqueBOT/1.03-dev (bigclicbot; http://www.bigclique.com; bot@bigclique.com) ',
-	'BlogsNowBot, V 2.01 (+http://www.blogsnow.com/) '];
-	agent_counter += 1;
-	return agents[agent_counter % agents.length];
-	
-	//add more user agents later. that might help...
-}
 
 function parse_article($,parent_url) {
 	var article_limit = 30
@@ -71,16 +53,15 @@ function parse_article($,parent_url) {
 		, numrellinks = rellinks.length
 		, numlinks = links.length;//27 <- be careful of order of selector and descendant annoying selectors
 		
-		if (rellinks.length !== 0) {
+		if (numrellinks !== 0) {
 			//add all the rellinks
-			for (var i = 0, ii = rellinks.length; i < ii; i++) {
+			for (var i = 0; i < numrellinks; i++) {
 				var linkURL = $(rellinks[i]).attr('href');
 				var title = $(rellinks[i]).attr('title'); 
 							
 				//make sure the link begins with /wiki/
 				var re = new RegExp("^(/wiki/)");
 				
-				console.log(linkURL);
 				
 				//make sure it is not identical to parent url
 				if (linkURL !== parent_url && linkURL.match(re) !== null) {
@@ -90,10 +71,11 @@ function parse_article($,parent_url) {
 		}
 		
 		
-		if (links.length !== 0) {
+		if (numlinks !== 0) {
 			//do something similar with the rest of the links but don't add any more if article has already > 30 links
-			for (var i = 0; (i < article_limit - numrellinks) && (i < links.length); i++) {
-				var linkURL = $(links[i]).attr('href');
+			for (var i = 0; (i < article_limit - numrellinks) && (i < numlinks); i++) {
+				var linkURL = $(links[i]).attr('href')
+					, title = $(links[i]).attr('title');
 				//make sure the link begins with /wiki/
 				var re = new RegExp("^(/wiki/)");
 							
@@ -109,6 +91,8 @@ function parse_article($,parent_url) {
 				children.push(children_dict[i]);
 			}
 		}
+		
+		debugger;//check children for titles...
 						
 		
 		var article = {
@@ -121,6 +105,49 @@ function parse_article($,parent_url) {
 		return article;//general article object. The search/random/get new children functions each make different assumptions on it.
 }
 
+
+function parse_disambig_article($,parent_url) {
+	//parse disambiguation articles. they have a different selector format and no rellinks
+	var article_limit = 30
+		,	children_dict = {}
+		, children = []
+		, redirlinks = $('#mw-content-text li a')
+		, numlinks = redirlinks.length;//27 <- be careful of order of selector and descendant annoying selectors
+		
+		if (numlinks !== 0) {
+			//do something similar with the rest of the links but don't add any more if article has already > 30 links
+			for (var i = 0; (i < article_limit) && (i < numlinks); i++) {
+				
+				var linkURL = $(redirlinks[i]).attr('href')
+					, title = $(redirlinks[i]).attr('title');
+				//make sure the link begins with /wiki/
+				var re = new RegExp("^(/wiki/)");
+							
+				//make sure children are not identical to the url of its parent page it resides on
+				if (linkURL !== parent_url && linkURL.match(re) !== null) {
+					children_dict[linkURL] = {'name':title, 'url':linkURL, 'childOf':parent_url, 'size':1000};
+				}
+				
+			}
+			
+			//add all the children in the dict to the array
+			for (var i in children_dict) {
+				children.push(children_dict[i]);
+			}
+		}
+		
+		debugger;//check children for titles...
+		var article = {
+				'name' : $('h1').text()
+			, 'url' : parent_url
+			, 'children' : children
+			, 'count' : numlinks//probably correlate to size later
+		};
+		
+		return article;//general article object. The search/random/get new children functions each make different assumptions on it.
+}
+
+
 //Setup Socket.IO
 var io = io.listen(server);
 
@@ -128,29 +155,46 @@ io.sockets.on('connection', function(socket){
   console.log('Client Connected');
   
 	socket.on('search',function(query){
-		request({'uri':'http://en.wikipedia.org/wiki/Special:Search?search='+query+'&go=Go','headers':{'User-Agent':randomAgent()}},function(error,response,body){
-			
-			console.log(body);
-			//code here has to discern whether this is an actual page or not, in addition to the url
-			var $ = cheerio.load(body);
-			
-			//check if none found
-			if ($('.mw-search-nonefound').length !== 0) {
-				//none found! 
-				socket.emit('none found',query);
-			}
-			
-			var article = parse_article($,response.request.uri.href);
-			console.log(article.name);
-			socket.emit('article',article);//like the random article, send the whole thing.
-		});
+		//inline function may be expensive...
+		function search(url) {
+			request({'uri':url,'headers':{'User-Agent':randomAgent()}},function(error,response,body){
+				//code here has to discern whether this is an actual page or not, in addition to the url
+				var $ = cheerio.load(body);
+				if ($('.mw-search-nonefound').length !== 0) {
+					//none found, no search results! 
+					socket.emit('none found',query);
+					return 0;
+				}
+				var search_results = $('.mw-search-results li');
+				if (search_results.length !== 0) {
+					//search results exist! pick the first one that comes up
+					var new_query = 'http://en.wikipedia.org/wiki/Special:Search?search='+$('.mw-search-results li a').attr('href');+'&go=Go'
+					console.log('searching new query',new_query);
+					search(new_query);//ought to be correct now...
+				}
+				//send disambiguation pages as their own article of sorts.
+				if ('#disambigbox') {
+					var article = parse_disambig_article($,response.request.uri.href);
+					socket.emit('article',article);
+					return 1;
+				}
+				
+				//otherwise, article is probably a perfect match
+				var article = parse_article($,response.request.uri.href);
+				console.log(article.name);
+				socket.emit('article',article);//like the random article, send the whole thing.
+				return 1;
+			});
+		}
 		
+		search('http://en.wikipedia.org/wiki/Special:Search?search='+query+'&go=Go');
 	});
 	
 	socket.on('get random article',function(){
 		request({'uri':'http://en.wikipedia.org/wiki/Special:Random','headers':{'User-Agent': randomAgent()}},function(error,response,body){
 			var article = parse_article(cheerio.load(body),response.request.uri.href);
 			socket.emit('article', article);//the whole article is emitted and upon loading in client, all children displayed immediately.
+			debugger;
 		});
 	});
 	
@@ -192,7 +236,7 @@ server.get('/', function(req,res){
               title : 'Mutant Platato'
              ,description: 'Wikipedia Knowledge Graph'
              ,author: 'Eric Jang'
-             ,analyticssiteid: 'XXXXXXX' 
+             ,analyticssiteid: 'UA-35545838-1' 
             }
   });
 });

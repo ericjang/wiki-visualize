@@ -5,7 +5,20 @@ block content
 	div.row-fluid
 		div.span4.offset4
 			p Mutant Platato is a low-budget wikipedia mapper, made by Eric Jang for the 2012 Brown University Hackjam.
+			p This visualization tool is made for nerds who like to spend hours lost within Wikipedia. Also somewhat useful for high-level semantic associations between difficult-to-understand topics.
+			p 
+				img(src="images/screenshot.png")
 			p Employs a rather dick-ish hack to accomplish load-balancing of querying articles across over 4 million wikipedia articles ... 
-			p(style="color : darkblue") ... without using a single byte of persistent storage.
-			p Powered by Node.JS, d3.js, and jQuery.
-
+			p(style="color : red") ... without using a single byte of persistent storage.
+			p Physics simulation is approximated via the 
+				a(href="http://arborjs.org/docs/barnes-hut") Barnes-Hut Algorithm.
+			p 
+				| Powered by 
+				a(href="nodejs.org") Node.JS
+				| ,
+				a(href="d3js.org") d3.js
+				| ,
+				a(href="https://github.com/MatthewMueller/cheerio") cheerio
+				| , and 
+				a(href="http://socket.io") Socket.io
+				| .

@@ -2,7 +2,10 @@
 */
 
 $(document).ready(function() {   
-
+	$("[rel=tooltip]").tooltip({'placement':'bottom'});
+	
+	
+	
 	var width = 1000,
 	    height = 600,
 	    node,
@@ -21,8 +24,9 @@ $(document).ready(function() {
 	  force
 	      .nodes(nodes)
 	      .links(links)
-				.linkDistance(150)
-				.charge(-10)
+				.linkDistance(50)//write a function for this maybe?
+				.charge(-800)
+				.friction(.6)
 	      .start();
 
 	  // Update the links…
@@ -42,42 +46,35 @@ $(document).ready(function() {
 
 	  // Update the nodes…
 	  node = vis.selectAll(".node")
-	      .data(nodes, function(d) { return d.id; })
-	      .style("fill", color);
+	      .data(nodes, function(d) { return d.id; });
+//	      .style("fill", color);
 
 	  node.transition()
 	      .attr("r", function(d) { return d.children ? 4.5 : Math.sqrt(d.size) / 10; });
 
 	  // Enter any new nodes.
-	
+		
+		
+		
 		node.enter().append("g")
 				.attr("class","node")
 		    .attr("cx", function(d) { return d.x; })
 		    .attr("cy", function(d) { return d.y; })
 				.call(force.drag);
 		
+		node.append("text")
+	      .attr("dx", 10)
+	      .attr("dy", ".25em")
+				.attr("font-size","11")
+	      .text(function(d) { return d.name });
+		
 		node.append("circle")
 				.attr("class", "node")
-		    .attr("r", function(d) { return d.children ? 4.5 : Math.sqrt(d.size) / 10; })
+		    .attr("r", function(d) { return d.children ? 4.5 : Math.sqrt(d.size) / 7; })
 		    .style("fill", color)
 		    .on("click", click);
 		
-	node.append("text")
-	      .attr("dx", 12)
-	      .attr("dy", ".35em")
-	      .text(function(d) { return d.name });
 		
-		/*
-		node.enter().append("circle")
-	  		.attr("class", "node")
-	      .attr("cx", function(d) { return d.x; })
-	      .attr("cy", function(d) { return d.y; })
-	      .attr("r", function(d) { return d.children ? 4.5 : Math.sqrt(d.size) / 10; })
-	      .style("fill", color)
-	      .on("click", click)
-	      .call(force.drag);
-		*/
-	
 	  // Exit any old nodes.
 	  node.exit().remove();
 	}
@@ -111,7 +108,7 @@ $(document).ready(function() {
 	    d._children = null;
 	  } else {
 	  	//no exposed or hidden children > must be a leaf node already!
-			console.log('expanding node...',d.url);
+			
 			//save the listening parent node so that we can add children to it later.
 			d.children = [];
 			waiting_parents[d.url] = d;
@@ -137,33 +134,7 @@ $(document).ready(function() {
 	  return nodes;
 	}
 			
-	function add_to_graph_old(node) {
-		// search for a 'clicked' node and append this node to its children, then call update();
-		//this seems kind of computationally expensive but it's probably the easiest solution
-		var parent_url = node.childOf;//the parent url we are looking for
-	
-		function find_daddy(base_node,_parent_url) {
-			console.log(base_node);
-			for (var i in base_node.children) {
-				//make sure we are getting the right one - might be duplicate names
-				if (base_node.children[i].url === _parent_url) {
-					console.log(base_node);
-					return base_node.children[i];
-				}
-				//didn't find it - search next layer recursively.
-				return find_daddy(base_node[i],_parent_url);
-			}
-		
-		}
-	
-		var daddy = find_daddy(root,parent_url);
-	
-		daddy.children.push(node);
-		update();
-	}
-			
 	function add_to_graph(node){
-		console.log('adding ',node.url)
 		for (var i in waiting_parents) {
 			if (node.childOf === waiting_parents[i].url) {
 				//found my parent! adding to parent should correctly add it to root node...
@@ -173,12 +144,7 @@ $(document).ready(function() {
 		}
 	}
 			
-	//quick test functions -> these work! make sure to set iswaiting and flip it off afterwards.
-	function test(){
-		root.children.push({'url':'google.com','size':1000,'iswaiting':true,'children':[]});
-		add_to_graph({'childOf':'google.com','size':1000});
-	}
-
+	
 
 	var MODE = (function(){
 		var c = {};
@@ -191,6 +157,7 @@ $(document).ready(function() {
 			//disable search box and replace #control div with ajax loader
 			$('#searchbox').attr('disabled','disabled');
 			$('#controls').replaceWith('<img src="images/ajax-loader.gif" style="display:block;margin:auto">');
+			$('.tooltip').hide();//hack to get rid of rogue tooltip
 		};
 		c.set_data = function() {
 			this.mode = c.modes[2];
@@ -208,17 +175,16 @@ $(document).ready(function() {
 			    .size([width, height]);
 
 			vis = d3.select("#chart").append("svg")
-			    .attr("width", width)
-			    .attr("height", height);
+			    //.attr("width", width) <-- do unlimited width/height!
+			    //.attr("height", height);
 		};
 		return c;
 	})();
 	
 	
 	
-  var socket = io.connect();
 	
-	$("[rel=tooltip]").tooltip({'placement':'bottom'});
+  var socket = io.connect();
 	
 	$('#searchbox').keypress(function(e){
 	    if (e.which == 13){
@@ -255,7 +221,7 @@ $(document).ready(function() {
 	});
 	
 	socket.on('none found',function(query){
-		alert('none found for query ',query);
+		alert('Sorry, we couldn\'t find what you were looking for... ');
 	});
 	
 });
