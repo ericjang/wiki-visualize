@@ -1,0 +1,33 @@
+a {
+	color : #2D2D2D;
+}
+
+#footer-menu ul {
+	text-align: center;
+	margin : auto;
+}
+
+#footer-menu li {
+	display: inline;
+	list-style-type: none;
+	padding-right: 20px;
+	text-align: center;
+}
+
+#footer {
+	position : absolute;
+	bottom : 0;
+	width:100%;
+}
+
+circle.node {
+  cursor: pointer;
+  stroke: #000;
+  stroke-width: .5px;
+}
+
+line.link {
+  fill: none;
+  stroke: #9ecae1;
+  stroke-width: 1.5px;
+}

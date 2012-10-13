@@ -1,6 +1,23 @@
 extends layout
 
 block content
-	div
-		a(id='sender')='Send a Message'
-		ul(id='receiver')
+	link(rel="stylesheet", href="/css/d3styles.css")
+	div#spacer.row(style="height:100px")
+	div.row-fluid#user
+		div.span4.offset1
+			img(src="images/plato.png", style="float:right")
+		div.span3
+			div.row
+				h1 Mutant Platato
+			div.row
+				label(for="searchbox") Enter the name of any Wikipedia Article
+				input#searchbox(type="text", placeholder="e.g. Paul Erdős", autofocus="autofocus", style="width: 250px")
+			div.row
+				div#controls
+					button#random(rel="tooltip", class="btn", style="margin:auto; width:130px; height:40px", data-original-title="get a random article")
+						img(src="images/glyphicons_254_fishes.png", alt="Random Image")
+					button#search(rel="tooltip", class="btn", style="margin:auto; width:130px; height:40px", data-original-title="search for an article")
+						img(src="images/glyphicons_027_search.png", alt="Search")
+
+block app_scripts
+	script(defer,src="/js/d3.v2.min.js")
