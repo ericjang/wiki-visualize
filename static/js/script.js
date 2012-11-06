@@ -53,9 +53,6 @@ $(document).ready(function() {
 	      .attr("r", function(d) { return d.children ? 4.5 : Math.sqrt(d.size) / 10; });
 
 	  // Enter any new nodes.
-		
-		
-		
 		node.enter().append("g")
 				.attr("class","node")
 		    .attr("cx", function(d) { return d.x; })
@@ -74,8 +71,7 @@ $(document).ready(function() {
 		    .style("fill", color)
 		    .on("click", click);
 		
-		
-	  // Exit any old nodes.
+		// Exit any old nodes.
 	  node.exit().remove();
 	}
 			

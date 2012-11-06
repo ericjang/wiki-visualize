@@ -10,7 +10,8 @@
     "mongoose": "2.4.8",
     "socket.io": "0.8.7",
 		"cheerio" : "*",
-		"request": "*"
+		"request": "*",
+		"agents" : "*"
   },
   "devDependencies": {
     "vows": "0.5.x",

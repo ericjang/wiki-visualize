@@ -7,7 +7,7 @@ var connect = require('connect')
 		, article_cache = {}
 		, request = require('request')
 		, cheerio = require('cheerio')
-		, randomAgent = require('./randomAgent.js');//replace this later with your better function
+		, agents = require('agents');//my custom user agents module
 	
 //Setup Express
 var server = express.createServer();
@@ -149,7 +149,7 @@ function parse_disambig_article($,parent_url) {
 
 
 //Setup Socket.IO
-var io = io.listen(server);
+var io = io.listen(server, {log:false});//no logging
 
 io.sockets.on('connection', function(socket){
   console.log('Client Connected');
@@ -157,7 +157,7 @@ io.sockets.on('connection', function(socket){
 	socket.on('search',function(query){
 		//inline function may be expensive...
 		function search(url) {
-			request({'uri':url,'headers':{'User-Agent':randomAgent()}},function(error,response,body){
+			request({'uri':url,'headers':{'User-Agent':agents.randomAgentString()}},function(error,response,body){
 				//code here has to discern whether this is an actual page or not, in addition to the url
 				var $ = cheerio.load(body);
 				if ($('.mw-search-nonefound').length !== 0) {
@@ -191,7 +191,7 @@ io.sockets.on('connection', function(socket){
 	});
 	
 	socket.on('get random article',function(){
-		request({'uri':'http://en.wikipedia.org/wiki/Special:Random','headers':{'User-Agent': randomAgent()}},function(error,response,body){
+		request({'uri':'http://en.wikipedia.org/wiki/Special:Random','headers':{'User-Agent': agents.randomAgentString()}},function(error,response,body){
 			var article = parse_article(cheerio.load(body),response.request.uri.href);
 			socket.emit('article', article);//the whole article is emitted and upon loading in client, all children displayed immediately.
 			debugger;
